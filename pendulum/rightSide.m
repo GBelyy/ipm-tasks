@@ -1,5 +1,5 @@
 function [dot_x] = rightSide(x, t, params, control)
-% Function returns right side of motion equataion of mathematical pendulum
+% Function returns right side of motion equation of mathematical pendulum
 % depending on system option
     switch lower(params.option)
         case 'simple'

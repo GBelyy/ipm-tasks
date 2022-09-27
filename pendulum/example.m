@@ -14,20 +14,20 @@ x(2, 1) = 0.1;                    % initial angular velocity
 
 params = struct();
 
-params.g = 9.8;                   % gravitational accelerationб, m/sec^2
+params.g = 9.8;                   % gravitational acceleration, m/sec^2
 params.mass = 0.1;                % mass of pendulum, kg
 params.l = 0.5;                   % length of pendulum, m
 params.b = 0.1;                   % dumping coefficient, sec^-1
 
-params.option = 'control';        % type of equatation's right side
+params.option = 'control';        % type of equation's right side
 
 params.koefPhi = 1;               % proportional coefficient of control
 params.koefOmega = 1;             % derivative coefficient of control
 
 params.xRef = [pi, 0];            % refrence position
 
-params.stepsForDetermination = 5; % steps for position determination (set 1 to disable disctrization)
-params.stepsForControl = 5;       % steps for control application (set 1 to disable disctrization)
+params.stepsForDetermination = 5; % steps for position determination (set 1 to disable discretization)
+params.stepsForControl = 5;       % steps for control application (set 1 to disable discretization)
 
 params.sigmaPhi = 0.01;              % angular error (set 0 to disable inaccuracy)
 params.sigmaOmega = 0.01;            % angular velocity error (set 0 to disable inaccuracy)
