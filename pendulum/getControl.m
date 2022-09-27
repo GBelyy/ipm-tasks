@@ -1,5 +1,10 @@
 function [control] = getControl(x, params)
-    control = params.g / params.l * sin(x(1)) ...
-              - params.k_phi * (x(1) - params.x_ref(1)) ...
-              - params.k_omega * (x(2) - params.x_ref(2));
+% Function returns control action depending on system option
+    if strcmp(params.option, 'control')
+        control = params.g / params.l * sin(x(1)) ...
+                  - params.koefPhi * (x(1) - params.xRef(1)) ...
+                  - params.koefOmega * (x(2) - params.xRef(2));
+    else
+        control = 0;
+    end
 end
