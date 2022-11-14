@@ -1,7 +1,7 @@
 function integrals = calcIntegrals(stateVec, params)
 
-    r = stateVec(1:3);
-    v = stateVec(4:6);
+    r = stateVec(1:3, 1);
+    v = stateVec(4:6, 1);
     
     integrals = struct();
     
