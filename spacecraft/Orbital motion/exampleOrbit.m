@@ -14,7 +14,7 @@ params.earthGM = 3.986004415e14;  % gravitational parameter of the Earth, m^3 / 
 params.J2 = 1.08262668e-3;        % J2 coefficient
 params.option = 'j2';         % type of dynamics for calculation: '2bp' or 'j2'
 
-params.checkIntegrals = 0;
+params.checkIntegrals = 1;
 params.vizualize = 1;
 
 x0 = zeros(6, 1);
@@ -37,38 +37,26 @@ end
 
 %% check first integrals
 if params.checkIntegrals
-    h = zeros(1, N);
-    c = zeros(1, N);
-    f = zeros(1, N);
-    potEnergy = zeros(1, N);
-
-    for i = 1:N
-        integrals = calcIntegrals(x(:, i), params);
-        h(i) = integrals.h;
-        c(i) = norm(integrals.c);
-        f(i) = norm(integrals.f);
-
-        potEnergy(i) = params.earthGM / norm(x(1:3, 1));
-    end
+    integrals = calcIntegralsOrbit(x, params);
 
     figure
     xlabel('time, sec')
     ylabel('value')
-    plot(t, h)
+    plot(t, integrals.h)
     title('Energy integral')
     grid on
 
     figure
     xlabel('time, sec')
     ylabel('value')
-    plot(t, c)
+    plot(t, integrals.c)
     title('Norm of kinetic moment')
     grid on
 
     figure
     xlabel('time, sec')
     ylabel('value')
-    plot(t, f)
+    plot(t, integrals.f)
     title('Norm of Laplas vector')
     grid on
 end
