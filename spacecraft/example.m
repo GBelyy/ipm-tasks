@@ -3,26 +3,31 @@ clear all
 close all
 
 %% memory allocation
-dt = 60;                % time step, sec
-t = 0 : dt : 3600 * 24;  % time grid, sec
+dt = 1e-4;                % time step, sec
+t = 0 : dt : 10;  % time grid, sec
 N = length(t);
-x = zeros(12, N);
 
 %% initial conditions
 % physical params
 params.earthRadius = 6378137;     % earth raduis, m
 params.earthGM = 3.986004415e14;  % gravitational parameter of the Earth, m^3 / sec^2
 params.J2 = 1.08262668e-3;        % J2 coefficient
-params.J = [20, 0, 0;
-    0, 20, 0;
-    0, 0, 1];
+params.J = [200, 0, 0;
+            0, 300, 0;
+            0, 0, 400];
+params.invJ = inv(params.J);
+params.mm = [1;2;3];
+params.mu_B = 7.812*10^6;
+params.theta = 12*pi\180;
+params.omega = 2*pi/(24*3600);
 
 % model params
 params.gravOption = 'j2';             % type of dynamics for calculation: '2bp' or 'j2'
-params.angParametriztion = 'euler';   % type of angular parametrization: 'euler', 'cosineMat', 'quat'
+params.angParametrization = 'euler';   % type of angular parametrization: 'euler', 'cosinemat', 'quat'
 
 % system params
-params.checkIntegrals = 0;
+params.controlType = NaN; 
+params.checkIntegrals = false;
 params.vizualize = 1;
 
 % initial conditions for orbital motion
@@ -30,24 +35,25 @@ r0 = zeros(6, 1);
 r0(1) = params.earthRadius + 600 * 1000; % semi-major axis, m
 r0(2) = deg2rad(82);                     % inclination, rad
 r0(3) = deg2rad(270);                    % RAAN, rad
-r0(4) = 0.001;                           % eccentricity
-r0(5) = deg2rad(0);                      % arguement of perigee, rad
+r0(4) = 0;                               % eccentricity
+r0(5) = deg2rad(0);                      % argument of perigee, rad
 r0(6) = deg2rad(0);                      % true anomaly, rad
 r0 = oe2st(r0, params);
 
 % initial conditions for angular parameters
 ang0 = zeros(3,1);
-ang0(1) = pi/6;
-ang0(2) = pi/2;
+ang0(1) = 0;
+ang0(2) = pi/6;
 ang0(3) = pi/4;
 
 % initial conditions for angular velocity
 omega0 = zeros(3,1);
 omega0(1) = 0;
-omega0(2) = 0.1;
-omega0(3) = 0.1;
+omega0(2) = 0.01;
+omega0(3) = 0.04;
 
 x0 = formInitConds(r0, ang0, omega0);
+x = zeros(size(ang0,1) + 9, N);
 x(:, 1) = x0;
 
 %% integration
@@ -72,22 +78,23 @@ if params.vizualize
     % calculation of euler angles and quaternions
     quat = zeros(4, N);
     angles = zeros(3, N);
-    switch lower(params.angParametriztion)
+    switch lower(params.angParametrization)
         case 'cosinemat'
             for i = 1:N
-                mat_i = x(7:9, 1:3, i);
-                quat(1:4, i) = cosineMat2quat(mat_i);
+                mat_i = [x(1:3, i), x(4:6, i), x(7:9, i)];
+                quat(1:4, i) = dcm2quat(mat_i);
                 angles(1:3, i) = cosineMat2eulerAng(mat_i);
             end
+
         case 'quat'
             for i = 1:N
-                quat(:, i) = x(7:10, i);
-                angles(:, i) = quat2eulerAng(quat(:, i));
+                quat(:, i) = x(1:4, i);
+                angles(:, i) = mod(quat2eulerAng(quat(:, i)), 2 * pi);
             end
         case 'euler'
             for i = 1:N
-                angles(:, i) = x(7:9, i);
-                quat(:, i) = eulerAng2quat(angles(:, i));
+                angles(:, i) = mod(x(1:3, i), 2*pi);
+                quat(:, i) = eulerAng2quat(x(1:3, i));
             end
     end
 
@@ -105,23 +112,33 @@ if params.vizualize
     hold off
 
     figure
-    grid on
-    plot(t, angles(1, :))
-    hold on
     plot(t, angles(2, :))
+    xlabel('time, sec')
+    ylabel('angle,rad')
+    legend('\theta')
+    grid on
+
+    figure
     plot(t, angles(3, :))
     xlabel('time, sec')
     ylabel('angle,rad')
-    legend('\phi','\theta', '\psi')
+    legend('\psi')
+    grid on
+
+    figure
+    plot(t, angles(1, :))
+    legend('\phi')
     grid on
     hold off
 
+    k = 10 + int8(isequal(params.angParametrization,'quat')) + 6 * int8(isequal(params.angParametrization,'cosineMat'));
     figure
     grid on
-    plot(t, x(10,:))
+    plot(t, x(k, :))
     hold on
-    plot(t, x(11,:))
-    plot(t, x(12,:))
+    plot(t, x(k + 1, :))
+    plot(t, x(k + 2, :))
+    title('Angular velocity')
     xlabel('time, sec')
     ylabel('omega component, rad/sec')
     legend('p','q', 'e')
@@ -129,12 +146,38 @@ if params.vizualize
     hold off
 end
 
+%% calc Jacob's integral
+if params.checkIntegrals
+    k = 10 + int8(isequal(params.angParametrization,'quat')) + 6 * int8(isequal(params.angParametrization,'cosineMat'));
+    jacIntegral = zeros(1, N);
+    for i = 1:N
+        A = quat2dcm(quat(:, i)');
+        E2 = A * [0;1;0];
+        E3 = A * [0;0;1];
+
+        omega = x(k:k+2,1);
+        r = x(1:3,1);
+        jacIntegral(i) = 0.5 * dot(omega, params.J * omega) ...
+                         + 3/2 * params.earthGM / norm(r)^3 * dot(E3, params.J *E3) ...
+                         - dot(sqrt(params.earthGM / norm(r)) * E2, E2);
+    end
+
+    figure
+    plot(t, jacIntegral)
+    ylim([min(jacIntegral)-1 max(jacIntegral)+1])
+    title('Jacobi integral')
+    xlabel('time, sec')
+    ylabel('integral')
+    grid on
+    grid on
+end
+
 %% auxilary functions
 function x0 = formInitConds(r0, ang0, omega0)
-    n = size(ang0, 2);
-    x0 = zeros(12, n);
+    [m, n] = size(ang0);
+    x0 = zeros(9+m, n);
     
     x0(1:6, 1) = r0;
-    x0(7:9, 1:n) = ang0;
-    x0(10:12, 1) = omega0;
+    x0(7:6+m, 1:n) = ang0;
+    x0(6+m+1:9+m, 1) = omega0;
 end

@@ -5,11 +5,11 @@ function integrals = calcIntegralsAngle(stateVec, params)
     integrals = struct();
     K = zeros(1, N);
     energy = zeros(1, N);
-    k = int8(isequal(params.angParametrization,'quat')) + 4;
+    k = 4 + int8(isequal(params.angParametrization,'quat')) + 6 * int8(isequal(params.angParametrization,'cosineMat'));
     switch lower(params.integralsEvent)
         case 'euler'
             for i = 1:N
-                omega = stateVec(k:k+2, 1, i);
+                omega = stateVec(k:k+2, i);
                 K_vec = params.J * omega;
                 K(i) = norm(K_vec);
                 energy(i) = dot(omega, K_vec) / 2;
@@ -19,9 +19,9 @@ function integrals = calcIntegralsAngle(stateVec, params)
             integrals.energy = energy;
         case 'lagrange'
             for i = 1:N
-                omega = stateVec(k:k+2, 1, i);
-                angles = transform2angles(stateVec(1:k - 1, :, i), params);
-                rotateMat = inv(eulerAng2cosineMat(angles));
+                omega = stateVec(k:k+2, i);
+                angles = transform2angles(stateVec(1:k - 1, i), params);
+                rotateMat = eulerAng2cosineMat(angles);
 
                 K_vecFCS = params.J * omega;     % fixed coordinate system
                 K_vecICS = rotateMat * K_vecFCS; % inertial coordinate system
@@ -41,7 +41,8 @@ function angles = transform2angles(state, params)
         case 'euler'
             angles = state;
         case 'cosinemat'
-            angles = cosineMat2eulerAng(state);
+            mat = [state(1:3), state(4:6), state(7:9)];
+            angles = cosineMat2eulerAng(mat);
         case 'quat'
             angles = quat2eulerAng(state);
         otherwise

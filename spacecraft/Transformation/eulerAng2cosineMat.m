@@ -13,5 +13,5 @@ function cosineMat = eulerAng2cosineMat(angles)
           -cos(psi) * sin(theta);
           cos(theta)];
 
-    cosineMat = [e1, e2, e3];
+    cosineMat = [e1, e2, e3]';
 end

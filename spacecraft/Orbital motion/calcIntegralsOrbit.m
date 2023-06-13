@@ -2,25 +2,22 @@ function integrals = calcIntegralsOrbit(stateVec, params)
     N = size(stateVec, 2);
 
     integrals = struct();
-    h = zeros(1, N);
-    c = zeros(1, N);
-    f = zeros(1, N);
-    potEnergy = zeros(1, N);
 
-    for i = 1:N
-        r = stateVec(1:3, i);
-        v = stateVec(4:6, i);
-        
-        h(i) = dot(v, v) / 2 - params.earthGM / norm(r);
-        c_vec = cross(r, v);
-        c(i) = norm(c_vec);
-        f(i) = norm(cross(v, c_vec) - params.earthGM * r/ norm(r));
+    r = stateVec(1:3);
+    v = stateVec(4:6);
 
-        potEnergy(i) = params.earthGM / norm(r);
-    end
+    h = dot(v, v) / 2 - params.earthGM / norm(r);
+    c_vec = cross(r, v);
+    c = norm(c_vec);
+    f_vec = cross(v, c_vec) - params.earthGM * r/ norm(r);
+    f = norm(f_vec);
+
+    potEnergy = params.earthGM / norm(r);
 
     integrals.h = h;
     integrals.f = f;
     integrals.c = c;
+    integrals.c_vec = c_vec;
+    integrals.f_vec = f_vec;
     integrals.potEnergy = potEnergy;
 end
